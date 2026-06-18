@@ -1,278 +1,150 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>団体員名簿の統括 - 団体管理ポータル</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>名簿管理 - 団体員専用ポータル</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      body {
-        font-family:
-          "Instrument Sans", "Noto Sans JP", ui-sans-serif, system-ui,
-          sans-serif;
-      }
-    </style>
-  </head>
-  <body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
-    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
-      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <div class="flex items-center gap-3">
-            <span class="font-bold text-xl tracking-tight text-gray-900"
-              >団体管理ポータル</span
-            >
-            <span
-              class="inline-flex items-center rounded-full bg-purple-50 px-2.5 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/10"
-            >
-              管理者
-            </span>
-          </div>
-
-          <div class="flex items-center gap-4">
-            <span class="hidden sm:inline text-xs text-gray-500">
-              ログイン中: soyokaze@gmail.com
-            </span>
-            <a
-              href="./testview2.html"
-              class="inline-flex items-center justify-center rounded-xl bg-gray-100 border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-200 transition"
-            >
-              管理メニューへ戻る
-            </a>
-          </div>
-        </div>
-      </div>
-    </header>
-
-    <main class="flex-grow py-10">
-      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <!-- ページタイトルと簡易統計 -->
-        <section
-          class="bg-white shadow-xs rounded-2xl border border-gray-100 p-6 sm:p-7 flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-        >
-          <div>
-            <h1 class="text-xl font-bold text-gray-900">団体員名簿の統括</h1>
-            <p class="text-sm text-gray-500 mt-1">
-              登録されている全メンバーのステータス確認、承認、および権限変更を行います。
-            </p>
-          </div>
-          <div class="flex gap-4 text-center">
-            <div class="bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
-              <p class="text-xs text-gray-500 font-medium">総会員数</p>
-              <p class="text-lg font-bold text-gray-900">142名</p>
-            </div>
-            <div
-              class="bg-purple-50/50 px-4 py-2 rounded-xl border border-purple-100"
-            >
-              <p class="text-xs text-purple-700 font-medium">要確認</p>
-              <p class="text-lg font-bold text-purple-900">1名</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- 検索・フィルタバー（見た目の装飾用） -->
-        <div
-          class="flex flex-col sm:flex-row gap-3 justify-between items-center bg-white p-4 rounded-xl border border-gray-100 shadow-xs"
-        >
-          <div class="w-full sm:w-72">
-            <input
-              type="text"
-              placeholder="名前、メールアドレスで検索..."
-              class="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-sm outline-hidden focus:border-purple-600 transition"
-              disabled
-              value="検索機能は管理者制限中"
-            />
-          </div>
-          <div class="flex gap-2 w-full sm:w-auto justify-end">
-            <span
-              class="inline-flex items-center rounded-lg bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600 cursor-not-allowed"
-              >全ステータス</span
-            >
-            <span
-              class="inline-flex items-center rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white cursor-pointer hover:bg-purple-700 transition"
-              >＋ 新規会員を手動追加</span
-            >
-          </div>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Noto Sans JP', sans-serif; }</style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen p-6">
+    <div class="max-w-5xl mx-auto space-y-6">
+        <div class="flex justify-between items-center">
+            <h1 class="text-2xl font-bold">団員名簿管理 (roster)</h1>
+            <a href="./testview2.html" class="text-sm text-blue-600 hover:underline">管理メニューに戻る</a>
         </div>
 
-        <!-- 名簿テーブルカード -->
-        <section
-          class="bg-white shadow-xs rounded-2xl border border-gray-100 overflow-hidden"
-        >
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr
-                  class="bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-wider"
-                >
-                  <th class="py-4 px-6">名前 / アカウント</th>
-                  <th class="py-4 px-6">地区 / 所属</th>
-                  <th class="py-4 px-6">権限レベル</th>
-                  <th class="py-4 px-6">2026年度会費</th>
-                  <th class="py-4 px-6">ステータス</th>
-                  <th class="py-4 px-6 text-right">操作</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100 text-sm">
-                <!-- ユーザー1 (管理者本人) -->
-                <tr class="hover:bg-gray-50/50 transition">
-                  <td class="py-4 px-6">
-                    <div class="font-semibold text-gray-900">そよかぜ　たろう</div>
-                    <div class="text-xs text-gray-400 font-mono mt-0.5">
-                      soyokaze@gmail.com
-                    </div>
-                  </td>
-                  <td class="py-4 px-6 text-gray-600">本部・運営担当</td>
-                  <td class="py-4 px-6">
-                    <span
-                      class="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-600/10"
-                      >責任者</span
-                    >
-                  </td>
-                  <td class="py-4 px-6">
-                    <span
-                      class="inline-flex items-center gap-1 text-xs font-semibold text-green-700"
-                      >✓ 免除（役員）</span
-                    >
-                  </td>
-                  <td class="py-4 px-6">
-                    <span
-                      class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/10"
-                      >有効</span
-                    >
-                  </td>
-                  <td class="py-4 px-6 text-right">
-                    <button
-                      class="text-xs font-semibold text-purple-600 hover:underline cursor-pointer"
-                    >
-                      変更
-                    </button>
-                  </td>
-                </tr>
+        <div class="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
+            <h2 class="text-lg font-bold mb-4 text-gray-700">新規団員登録</h2>
+            <form id="registerForm" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">氏名</label>
+                    <input type="text" id="regName" class="w-full border border-gray-300 rounded-lg p-2 text-sm" placeholder="山田 太郎" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">メールアドレス (ID)</label>
+                    <input type="email" id="regEmail" class="w-full border border-gray-300 rounded-lg p-2 text-sm" placeholder="test@gmail.com" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">パスワード</label>
+                    <input type="text" id="regPassword" class="w-full border border-gray-300 rounded-lg p-2 text-sm" placeholder="任意のパスワード" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">所属支部</label>
+                    <input type="text" id="regBranch" class="w-full border border-gray-300 rounded-lg p-2 text-sm" placeholder="東京地区支部" value="東京地区支部">
+                </div>
+                
+                <div class="flex items-center gap-3 p-2 border border-gray-200 rounded-lg bg-gray-50">
+                    <span class="text-sm font-medium text-gray-700">責任者権限:</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="regRoleToggle" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
 
-                <!-- ユーザー2 -->
-                <tr class="hover:bg-gray-50/50 transition">
-                  <td class="py-4 px-6">
-                    <div class="font-semibold text-gray-900">山田 太郎</div>
-                    <div class="text-xs text-gray-400 font-mono mt-0.5">
-                      yamada.test@gmail.com
-                    </div>
-                  </td>
-                  <td class="py-4 px-6 text-gray-600">東京地区支部</td>
-                  <td class="py-4 px-6 text-gray-500">一般団体員</td>
-                  <td class="py-4 px-6">
-                    <span
-                      class="inline-flex items-center gap-1 text-xs text-green-600 font-medium"
-                      >✓ 決済済 (05/12)</span
-                    >
-                  </td>
-                  <td class="py-4 px-6">
-                    <span
-                      class="inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/10"
-                      >有効</span
-                    >
-                  </td>
-                  <td class="py-4 px-6 text-right">
-                    <button
-                      class="text-xs font-semibold text-purple-600 hover:underline cursor-pointer"
-                    >
-                      変更
-                    </button>
-                  </td>
-                </tr>
+                <button type="submit" class="w-full bg-blue-600 text-white rounded-lg p-2 text-sm font-bold hover:bg-blue-700 transition">登録する</button>
+            </form>
+        </div>
 
-                <!-- ユーザー3 (要確認対象) -->
-                <tr class="bg-amber-50/20 hover:bg-amber-50/40 transition">
-                  <td class="py-4 px-6">
-                    <div
-                      class="font-semibold text-amber-950 flex items-center gap-1.5"
-                    >
-                      <span>佐藤 美咲</span>
-                      <span
-                        class="inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800"
-                        >未承認</span
-                      >
-                    </div>
-                    <div class="text-xs text-amber-700/70 font-mono mt-0.5">
-                      sato.misaki_test@outlook.jp
-                    </div>
-                  </td>
-                  <td class="py-4 px-6 text-amber-900">神奈川地区支部</td>
-                  <td class="py-4 px-6 text-amber-800">一般団体員</td>
-                  <td class="py-4 px-6">
-                    <span
-                      class="inline-flex items-center gap-1 text-xs text-amber-700 font-semibold animate-pulse"
-                      >⏳ 入金確認待ち</span
-                    >
-                  </td>
-                  <td class="py-4 px-6">
-                    <span
-                      class="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20"
-                      >保留中</span
-                    >
-                  </td>
-                  <td class="py-4 px-6 text-right space-x-2">
-                    <button
-                      class="text-xs font-bold text-green-700 hover:underline cursor-pointer"
-                    >
-                      一発承認
-                    </button>
-                    <button
-                      class="text-xs font-semibold text-gray-400 hover:underline cursor-pointer"
-                    >
-                      詳細
-                    </button>
-                  </td>
-                </tr>
-
-                <!-- ユーザー4 -->
-                <tr class="hover:bg-gray-50/50 transition">
-                  <td class="py-4 px-6">
-                    <div class="font-semibold text-gray-900">鈴木 一郎</div>
-                    <div class="text-xs text-gray-400 font-mono mt-0.5">
-                      suzuki.k@gmail.com
-                    </div>
-                  </td>
-                  <td class="py-4 px-6 text-gray-600">千葉地区支部</td>
-                  <td class="py-4 px-6 text-gray-500">一般団体員</td>
-                  <td class="py-4 px-6">
-                    <span
-                      class="inline-flex items-center gap-1 text-xs text-gray-400"
-                      >ー 未納（休会中）</span
-                    >
-                  </td>
-                  <td class="py-4 px-6">
-                    <span
-                      class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10"
-                      >休会中</span
-                    >
-                  </td>
-                  <td class="py-4 px-6 text-right">
-                    <button
-                      class="text-xs font-semibold text-purple-600 hover:underline cursor-pointer"
-                    >
-                      変更
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
+        <div class="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-100 text-gray-600 font-medium">
+                    <tr>
+                        <th class="p-3">ID (メール)</th>
+                        <th class="p-3">氏名</th>
+                        <th class="p-3">所属支部</th>
+                        <th class="p-3">権限</th>
+                        <th class="p-3 text-red-600 font-bold">パスワード</th>
+                        <th class="p-3">操作</th>
+                    </tr>
+                </thead>
+                <tbody id="rosterTableBody" class="divide-y divide-gray-100">
+                    </tbody>
             </table>
-          </div>
-        </section>
-      </div>
-    </main>
+        </div>
+    </div>
 
-    <footer class="bg-white border-t border-gray-200 py-6 mt-auto">
-      <div
-        class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-gray-400"
-      >
-        &copy; 2026 団体管理ポータルサイト. All rights reserved.
-      </div>
-    </footer>
-  </body>
+    <script>
+        // 初期メンバーデータ（パスワードと住所を初期配備）
+        const defaultMembers = [
+            { id: 1, name: "そよかぜ たろう", email: "soyokaze@gmail.com", password: "soyokaze0815", branch: "本部・運営担当", role: "責任者", birthday: "1998年 8月 15日", gender: "男性", tel: "090-1192-8150", status: "有効", address: "東京都千代田区千代田1番1号" },
+            { id: 2, name: "山田 太郎", email: "yamada.test@gmail.com", password: "password123", branch: "東京地区支部", role: "一般団体員", birthday: "1995年 3月 10日", gender: "男性", tel: "090-1234-5678", status: "有効", address: "東京都港区六本木6丁目10番1号" },
+            { id: 3, name: "佐藤 美咲", email: "sato.misaki_test@outlook.jp", password: "password456", branch: "神奈川地区支部", role: "一般団体員", birthday: "2000年 11月 23日", gender: "女性", tel: "080-9876-5432", status: "保留中", address: "神奈川県横浜市中区新港1丁目1番" }
+        ];
+
+        // ローカルストレージにデータがなければ初期データを保存
+        if (!localStorage.getItem('portal_members')) {
+            localStorage.setItem('portal_members', JSON.stringify(defaultMembers));
+        }
+
+        // 表示処理
+        function renderRoster() {
+            const members = JSON.parse(localStorage.getItem('portal_members'));
+            const tbody = document.getElementById('rosterTableBody');
+            tbody.innerHTML = '';
+
+            members.forEach(m => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="p-3 font-mono text-xs">${m.email}</td>
+                    <td class="p-3 font-bold">${m.name}</td>
+                    <td class="p-3 text-gray-500">${m.branch}</td>
+                    <td class="p-3">
+                        <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${m.role === '責任者' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-800'}">
+                            ${m.role}
+                        </span>
+                    </td>
+                    <td class="p-3 font-mono font-bold text-red-600 bg-red-50/50">${m.password}</td>
+                    <td class="p-3">
+                        <button onclick="deleteMember('${m.email}')" class="text-xs text-red-500 hover:underline">削除</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 登録イベント
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('regEmail').value;
+            const name = document.getElementById('regName').value;
+            const password = document.getElementById('regPassword').value;
+            const branch = document.getElementById('regBranch').value;
+            const isManager = document.getElementById('regRoleToggle').checked;
+            const role = isManager ? "責任者" : "一般団体員";
+
+            const members = JSON.parse(localStorage.getItem('portal_members'));
+
+            // 重複チェック
+            if (members.some(m => m.email === email)) {
+                alert('このメールアドレスは既に登録されています！');
+                return;
+            }
+
+            members.push({
+                id: Date.now(),
+                name, email, password, branch, role,
+                birthday: "未設定", gender: "未設定", tel: "未設定", status: "有効", address: "未設定"
+            });
+
+            localStorage.setItem('portal_members', JSON.stringify(members));
+            renderRoster();
+            this.reset();
+        });
+
+        // 削除処理
+        window.deleteMember = function(email) {
+            if(confirm('本当に削除しますか？')) {
+                let members = JSON.parse(localStorage.getItem('portal_members'));
+                members = members.filter(m => m.email !== email);
+                localStorage.setItem('portal_members', JSON.stringify(members));
+                renderRoster();
+            }
+        };
+
+        // 初回読み込み時に表示
+        renderRoster();
+    </script>
+</body>
 </html>

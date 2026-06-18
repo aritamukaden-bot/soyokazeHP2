@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ログインページ</title>
     <style>
-        /* 全体のレイアウト調整 */
         body {
             font-family: 'Helvetica Neue', Arial, sans-serif;
             background-color: #f4f7f6;
@@ -15,8 +14,6 @@
             height: 100vh;
             margin: 0;
         }
-
-        /* ログインボックスのデザイン */
         .login-container {
             background-color: #ffffff;
             padding: 30px;
@@ -26,25 +23,20 @@
             max-width: 380px;
             box-sizing: border-box;
         }
-
         h2 {
             text-align: center;
             margin-bottom: 24px;
             color: #333333;
         }
-
-        /* 入力フォームのスタイル */
         .input-group {
             margin-bottom: 16px;
         }
-
         .input-group label {
             display: block;
             margin-bottom: 6px;
             color: #666666;
             font-size: 14px;
         }
-
         .input-group input {
             width: 100%;
             padding: 10px;
@@ -53,8 +45,6 @@
             font-size: 16px;
             box-sizing: border-box;
         }
-
-        /* ボタンのスタイル */
         .login-btn {
             width: 100%;
             padding: 12px;
@@ -68,12 +58,7 @@
             transition: background-color 0.2s;
             margin-top: 10px;
         }
-
-        .login-btn:hover {
-            background-color: #0056b3;
-        }
-
-        /* エラーメッセージ用のスタイル */
+        .login-btn:hover { background-color: #0056b3; }
         .error-message {
             margin-top: 16px;
             text-align: center;
@@ -103,48 +88,35 @@
 
 <script>
     document.getElementById('loginForm').addEventListener('submit', function(event) {
-        // 通常のページ遷移（リロード）をキャンセル
         event.preventDefault();
 
-        // 画面に入力された値を取得
         const inputId = document.getElementById('userId').value;
         const inputPass = document.getElementById('password').value;
         const errorDiv = document.getElementById('errorMessage');
 
-        // ----------------------------------------------------\
-        // 【設定】正しいIDとパスワード
-        // ----------------------------------------------------\
-        const correctId = "soyokaze@gmail.com"; 
-        const correctPass = "soyokaze0815";
-        // ----------------------------------------------------\
+        // roster.html側で登録されたすべての団員情報を取得
+        const members = JSON.parse(localStorage.getItem('portal_members')) || [];
+        
+        // 入力されたメールアドレスを持つ団員を探す
+        const matchedUser = members.find(m => m.email === inputId);
 
-        // エラー色を初期化（基本は赤）
         errorDiv.style.color = "#dc3545";
 
-        // 条件判定：IDもパスワードも両方違う場合
-        if (inputId !== correctId && inputPass !== correctPass) {
-            errorDiv.textContent = "IDとパスワードが違います";
-        } 
-        // 条件判定：IDだけが違う場合
-        else if (inputId !== correctId) {
+        if (!matchedUser) {
             errorDiv.textContent = "IDが違います";
-        } 
-        // 条件判定：パスワードだけが違う場合
-        else if (inputPass !== correctPass) {
+        } else if (matchedUser.password !== inputPass) {
             errorDiv.textContent = "パスワードが違います";
-        } 
-        // すべて一致した場合（ログイン成功）
-        else {
-            errorDiv.style.color = "#28a745"; // 文字色を緑に
+        } else {
+            // ログイン成功時：マッチした団員データをセッションとして保存
+            errorDiv.style.color = "#28a745";
             errorDiv.textContent = "ログインに成功しました！";
             
-            alert("ログイン成功！");
+            localStorage.setItem('current_logged_in_user', JSON.stringify(matchedUser));
             
-            // ログイン成功後のマイページ（モダンレイアウト版）へ遷移
+            alert("ログイン成功！");
             window.location.href = "./testview.html";
         }
     });
 </script>
-
 </body>
 </html>
