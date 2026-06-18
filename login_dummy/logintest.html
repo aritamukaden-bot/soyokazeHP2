@@ -117,6 +117,16 @@
             window.location.href = "./testview.html";
         }
     });
+    // --- 👇 ここから追加：ログイン画面でも初期データを用意する ---
+const defaultMembers = [
+    { id: 1, name: "そよかぜ たろう", email: "soyokaze@gmail.com", password: "soyokaze0815", branch: "本部・運営担当", role: "責任者", birthday: "1998年 8月 15日", gender: "男性", tel: "090-1192-8150", status: "有効", address: "東京都千代田区千代田1番1号" },
+    { id: 2, name: "山田 太郎", email: "yamada.test@gmail.com", password: "password123", branch: "東京地区支部", role: "一般団体員", birthday: "1995年 3月 10日", gender: "男性", tel: "090-1234-5678", status: "有効", address: "東京都港区六本木6丁目10番1号" },
+    { id: 3, name: "佐藤 美咲", email: "sato.misaki_test@outlook.jp", password: "password456", branch: "神奈川地区支部", role: "一般団体員", birthday: "2000年 11月 23日", gender: "女性", tel: "080-9876-5432", status: "保留中", address: "神奈川県横浜市中区新港1丁目1番" }
+];
+
+if (!localStorage.getItem('portal_members')) {
+    localStorage.setItem('portal_members', JSON.stringify(defaultMembers));
+}
 </script>
 </body>
 </html>
