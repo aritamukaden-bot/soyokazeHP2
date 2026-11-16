@@ -57,6 +57,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   navContainer.innerHTML = result.html;
 
+  // nav.html の中のリンクや画像は nav.html から見た相対パスで書かれているので、
+  // 下の階層のページ（tunagari/ など）でも正しく開けるように絶対URLへ直す
+  const navBase = new URL(result.url, location.href);
+  navContainer.querySelectorAll("[href], [src]").forEach((el) => {
+    const attr = el.hasAttribute("href") ? "href" : "src";
+    const value = el.getAttribute(attr);
+    if (!value || /^(#|[a-z][a-z0-9+.-]*:|\/\/)/i.test(value)) return;
+    el.setAttribute(attr, new URL(value, navBase).href);
+  });
+
+  // ナビの準備ができたことを他のスクリプトへ知らせる
+  document.dispatchEvent(new CustomEvent("nav:ready"));
+
   // ナビ挿入後にトグル初期化
   if (typeof window.initNavToggle === "function") {
     window.initNavToggle();

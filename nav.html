@@ -1,27 +1,38 @@
 <header class="header">
-  <h1 class="header-logo">
-    <a href="./index.html" class="logo-text">
-      学生団体そよかぜ
+  <p class="header-logo">
+    <a href="./index.html">
+      <img src="./assets/image/thumb/mark.jpg" alt="" width="48" height="48">
+      <span class="logo-text">学生団体そよかぜ</span>
     </a>
-  </h1>
+  </p>
 
-  <button class="nav-toggle" id="navToggle"
-          aria-label="メニューを開く"
-          aria-expanded="false">
-    <img src="./assets/image/そよかぜマーク.jpg"
-         alt="そよかぜのマーク"
-         class="logo-icon">
-    <p class="menu">menu</p>
+  <nav class="header-pill" aria-label="メインメニュー">
+    <ul>
+      <li><a href="./dantaigaiyou.html">団体概要</a></li>
+      <li><a href="./daihyou.html">代表あいさつ</a></li>
+      <li><a href="./activites.html">活動紹介</a></li>
+      <li><a href="./jisseki.html">活動実績</a></li>
+      <li><a href="./index.html#contact">お問い合わせ</a></li>
+      <li class="header-pill-login"><a href="./login_dummy/logintest.html" target="_blank" rel="noopener noreferrer">団体ログイン</a></li>
+    </ul>
+  </nav>
+
+  <button class="nav-toggle" id="navToggle" type="button"
+          aria-label="メニューを開く" aria-controls="sideMenu" aria-expanded="false">
+    <span class="nav-toggle-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="menu">menu</span>
   </button>
 </header>
 
-<aside id="sideMenu" class="side-menu">
+<div class="side-menu-backdrop" id="sideBackdrop"></div>
+
+<aside id="sideMenu" class="side-menu" aria-label="メニュー">
   <div class="side-menu-header">
     <div class="side-menu-brand">
-      <img src="./assets/image/そよかぜマーク.jpg" alt="そよかぜのマーク">
+      <img src="./assets/image/thumb/mark.jpg" alt="そよかぜのマーク" width="40" height="40">
       <span>学生団体そよかぜ</span>
     </div>
-    <button class="side-close-btn" id="sideClose">×</button>
+    <button class="side-close-btn" id="sideClose" type="button" aria-label="メニューを閉じる">×</button>
   </div>
 
   <nav class="side-menu-nav">
@@ -39,21 +50,8 @@
       <p class="side-menu-section-title">活動紹介</p>
       <ul>
         <li><a href="./activites.html">活動紹介</a></li>
-
-        
       </ul>
- 
-
-    <dialog id="pwdDialog" style="padding: 20px; border-radius: 8px; border: 1px solid #ccc; background-color: #fff; color: #333;">
-      <form id="pwdForm" method="dialog">
-        <p style="margin-top: 0; font-weight: bold;">パスワードを入力してください</p>
-        <input type="password" id="inputPwd" required style="margin-bottom: 10px; display: block; width: 100%; box-sizing: border-box; padding: 5px;">
-        <div style="text-align: right;">
-          <button type="button" id="closeDialog" style="margin-right: 5px;">キャンセル</button>
-          <button type="submit">送信</button>
-        </div>
-      </form>
-    </dialog>
+    </div>
 
     <div class="side-menu-group">
       <p class="side-menu-section-title">お問い合わせ</p>
@@ -61,13 +59,12 @@
         <li><a href="./index.html#contact">お問い合わせフォーム</a></li>
       </ul>
     </div>
-       </div>
+
     <div class="side-menu-group">
       <p class="side-menu-section-title">団体ログイン</p>
       <ul>
-        <li><a href="./login_dummy/logintest.html" target="_blank" rel="noopener noreferrer">>団体ログインはこちら</a></li>
+        <li><a href="./login_dummy/logintest.html" target="_blank" rel="noopener noreferrer">団体ログインはこちら</a></li>
       </ul>
     </div>
-    
   </nav>
 </aside>
