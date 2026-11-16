@@ -9,6 +9,7 @@
 // ===================================================
 
 import * as THREE from './vendor/three.module.min.js';
+import { NOTO } from './noto-data.js';
 
 const root = document.documentElement;
 const journey = document.getElementById('journey');
@@ -36,14 +37,15 @@ const C = {
 };
 
 // ---------- カメラが止まる場所（カードと同じ順番） ----------
-// target: 見つめる点 / az: 島を回る角度 / el: 見下ろす角度 / dist: 距離 / spot: 点線の先
+// key: 見つめる場所（noto-data.js の places） / t: そこからのずらし / spotKey・s: 点線の先
+// az: 町を回る角度（0 で北が上） / el: 見下ろす角度 / dist: 距離
 const STOPS = [
-  { target: [0, 1.6, -1.0],   az: 35,  el: 31, dist: 74, spot: [0, 8.1, -3] },     // ホーム：風車
-  { target: [5.2, 1.8, -0.3], az: 80,  el: 27, dist: 40, spot: [6.9, 5.0, -0.3] }, // 団体概要：みんなの拠点
-  { target: [4.8, 1.6, -5.8], az: 138, el: 27, dist: 38, spot: [5.6, 3.9, -6.4] }, // 代表挨拶：ただいまの家
-  { target: [-4.8, 2.0, -5.6], az: 222, el: 27, dist: 40, spot: [-5.6, 5.3, -6.2] }, // 活動紹介：あばれ祭り
-  { target: [-5.2, 1.6, -0.3], az: 292, el: 27, dist: 38, spot: [-6.6, 3.7, -0.3] }, // 魅力発信：うまいもん商店
-  { target: [0.6, 1.4, 4.6],  az: 372, el: 25, dist: 40, spot: [1.5, 3.3, 5.0] },  // お問い合わせ：ポスト
+  { key: null, t: [-1.2, 0, 0.4], spotKey: 'yakuba', s: [0, 1.2, 0], az: 6, el: 44, dist: 80 },            // ホーム：能登町の全体
+  { key: 'sakura', t: [0.6, 0.5, 0.2], s: [0, 1.1, 0], az: -52, el: 33, dist: 20 },                        // 団体概要：町の入口・桜峠
+  { key: 'port', t: [-0.3, 0.4, -0.2], s: [0, 0.85, 0], az: -6, el: 34, dist: 17 },                        // 代表挨拶：宇出津港
+  { key: 'yakuba', t: [0.1, 0.5, -0.5], spotKey: 'abare', s: [-1.35, 1.75, -0.4], az: 34, el: 33, dist: 18 }, // 活動紹介：あばれ祭り・つなぐマーケット
+  { key: 'tsukumo', t: [-1.5, 0.4, 0.3], s: [0, 0.9, 0], az: 96, el: 33, dist: 20 },                       // 魅力発信：九十九湾・小木・真脇
+  { key: 'matsupost', t: [-0.3, 0.4, -0.5], s: [0.1, 1.0, -0.1], az: 150, el: 33, dist: 17 },              // お問い合わせ：松波の郵便局
 ];
 
 // ===================================================
@@ -230,203 +232,331 @@ function start() {
   }
 
   // ===================================================
-  // 島
+  // 能登町の地形
+  // 町の輪郭・標高・森や田んぼ・集落・道路・川は、noto-data.js の実データから作る
   // ===================================================
-  function buildIsland() {
-    // 草地・土・砂浜・海
-    box(world, 24, 0.5, 18, 0, -0.5, -3, C.grass);
-    box(world, 24, 1.3, 18, 0, -1.8, -3, C.soil);
-    box(world, 24.4, 0.4, 18.4, 0, -2.2, -3, C.soilDark);
-    box(world, 24, 0.42, 1.6, 0, -0.5, 6.8, C.sand);
-    box(world, 24, 1.3, 1.6, 0, -1.8, 6.8, C.soil);
-    box(world, 24, 0.3, 4.6, 0, -0.62, 9.9, C.water, { cast: false });
-    box(world, 24, 1.2, 4.6, 0, -1.82, 9.9, C.waterDeep);
-    box(world, 24.4, 0.4, 6.4, 0, -2.2, 9.2, C.soilDark);
+  const G = NOTO;
+  const COLS = G.cols;
+  const ROWS = G.rows;
+  const CELL = G.cell;
+  const SEA_Y = -0.14;   // 海面の高さ
+  const BASE_Y = -1.5;   // 土台の底
+  const STEP = 0.13;     // 標高1段ぶんの高さ（約42m）
+  const T = { grass: 0, broad: 1, conifer: 2, paddy: 3, field: 4, town: 5, lake: 6, plaza: 7 };
+  const TYPE_COLOR = [0x9fd16c, 0x86c765, 0x6db565, 0xd3df7c, 0xe3cf95, 0xf1e7cf, 0x5bb8e0, 0xf6e8c6];
 
-    // ぐるっと一周する道
-    const X = 9.8, Z0 = -9.8, Z1 = 3.5, W = 1.25;
-    box(world, X * 2 + W, 0.06, W, 0, 0, Z0, C.path, { cast: false });
-    box(world, X * 2 + W, 0.06, W, 0, 0, Z1, C.path, { cast: false });
-    box(world, W, 0.06, Z1 - Z0 - W, -X, 0, (Z0 + Z1) / 2, C.path, { cast: false });
-    box(world, W, 0.06, Z1 - Z0 - W, X, 0, (Z0 + Z1) / 2, C.path, { cast: false });
-    // 風車へ続く小道
-    box(world, 0.9, 0.05, 4.2, 0, 0, 1.1, C.path, { cast: false });
-    box(world, 0.9, 0.05, 2.0, 0, 0, 4.9, C.path, { cast: false });
-
-    // 草のむら
-    for (let i = 0; i < 46; i++) {
-      const x = -11.4 + rand() * 22.8;
-      const z = -11.4 + rand() * 16.6;
-      const onRoad = Math.abs(Math.abs(x) - X) < 0.9 || Math.abs(z - Z0) < 0.9 || Math.abs(z - Z1) < 0.9;
-      if (onRoad) continue;
-      box(world, 0.5 + rand() * 0.6, 0.04, 0.5 + rand() * 0.6, x, 0, z, C.grassDark, { cast: false });
-    }
-
-    // 外まわりの木と丘
-    const outer = [
-      [-11, -11.2], [-8.6, -11.3], [-4.5, -11.2], [-1.5, -11.4], [2.5, -11.2], [6, -11.3], [9, -11.2], [11.2, -11],
-      [-11.3, -7.5], [-11.2, -3.5], [-11.3, 0.5], [-11.2, 4.6],
-      [11.3, -7], [11.2, -3], [11.3, 1.5], [11.2, 4.8],
-    ];
-    outer.forEach(([x, z], i) => tree(world, x, z, { sakura: i % 3 === 1, s: 0.8 + rand() * 0.35 }));
-    // 道の内側
-    [[-2.6, -8.2], [2.8, -8.3], [0.2, -7.6], [-8.6, -3.4], [8.6, -3.4], [-2.8, 1.8], [2.9, 1.9]]
-      .forEach(([x, z], i) => tree(world, x, z, { sakura: i % 2 === 0, s: 0.75 + rand() * 0.3 }));
-
-    // 丘（奥の角）
-    const hill = group(world, -10.6, 0, -10.4);
-    box(hill, 2.6, 0.6, 2.6, 0, 0, 0, C.grassDark);
-    box(hill, 1.8, 0.6, 1.8, 0.1, 0.6, 0.1, C.leaf);
-    box(hill, 1.0, 0.5, 1.0, 0.1, 1.2, 0.1, C.leafDark);
-
-    // 花
-    const flowerColors = [C.pink, C.yellow, C.white, C.coral];
-    for (let i = 0; i < 26; i++) {
-      const a = rand() * Math.PI * 2;
-      const r = 3.2 + rand() * 1.2;
-      flower(world, Math.cos(a) * r, -3 + Math.sin(a) * r * 0.9, pick(flowerColors));
+  const kind = new Uint8Array(COLS * ROWS);   // 0:なし 1:海 2:陸
+  const topY = new Float32Array(COLS * ROWS);
+  const type = new Uint8Array(COLS * ROWS);
+  const used = new Uint8Array(COLS * ROWS);   // 名所を置いたマス（木や家を置かない）
+  for (let i = 0; i < COLS * ROWS; i++) {
+    const ch = G.height[i];
+    if (ch === '.') continue;
+    if (ch === '~') {
+      kind[i] = 1;
+      topY[i] = SEA_Y;
+    } else {
+      kind[i] = 2;
+      topY[i] = 0.1 + (ch.charCodeAt(0) - 97) * STEP;
+      type[i] = +G.type[i];
     }
   }
 
-  // ---------- 風車（ホーム） ----------
-  function buildWindmill() {
-    const g = group(world, 0, 0, -3, 35 * DEG);
-    box(g, 3.4, 0.5, 3.4, 0, 0, 0, C.stone);
-    const widths = [2.7, 2.5, 2.3, 2.1, 1.9, 1.7];
-    widths.forEach((w, i) => box(g, w, 1.1, w, 0, 0.5 + i * 1.1, 0, i === 2 ? C.coral : C.white));
-    box(g, 2.1, 0.9, 2.1, 0, 7.1, 0, C.cream);
-    box(g, 2.5, 0.35, 2.5, 0, 8.0, 0, C.red);
-    box(g, 1.7, 0.35, 1.7, 0, 8.35, 0, C.red);
-    box(g, 0.9, 0.3, 0.9, 0, 8.7, 0, C.coral);
-    // とびらと窓
-    box(g, 0.8, 1.2, 0.12, 0, 0.5, 1.36, C.brown);
-    box(g, 0.5, 0.5, 0.12, 0, 3.0, 1.18, C.navy);
-    box(g, 0.5, 0.5, 0.12, 0, 5.1, 1.0, C.navy);
-    box(g, 0.12, 0.5, 0.5, 1.18, 3.9, 0, C.navy);
+  function cellAt(x, z) {
+    const c = Math.floor((x - G.x0) / CELL);
+    const r = Math.floor((z - G.z0) / CELL);
+    return c < 0 || r < 0 || c >= COLS || r >= ROWS ? -1 : c + r * COLS;
+  }
+  function groundY(x, z) {
+    const i = cellAt(x, z);
+    return i >= 0 && kind[i] === 2 ? topY[i] : 0.1;
+  }
 
-    // 羽根（回る）
-    const hub = dynamic(group(g, 0, 7.55, 1.2));
-    box(hub, 0.5, 0.5, 0.5, 0, -0.25, 0, C.darkBrown);
-    for (let i = 0; i < 4; i++) {
-      const blade = group(hub);
-      blade.rotation.z = (i * Math.PI) / 2;
-      box(blade, 0.16, 4.0, 0.12, 0, 0.1, 0.2, C.brown);
-      box(blade, 0.95, 2.9, 0.07, 0.55, 1.1, 0.2, C.cream);
-      for (let k = 0; k < 4; k++) box(blade, 0.95, 0.07, 0.1, 0.55, 1.3 + k * 0.7, 0.2, C.brown);
+  // 名所を置く場所：まわりを平らにならして、そこにグループを作る
+  // key は noto-data.js の places の名前。dx,dz は見やすくするための少しのずらし
+  function site(key, dx, dz, rad, rotDeg, scale) {
+    const x = G.places[key][0] + dx;
+    const z = G.places[key][1] + dz;
+    const y = groundY(x, z);
+    if (cellAt(x, z) < 0 || kind[cellAt(x, z)] !== 2) console.warn('陸の上にありません:', key);
+    const n = Math.ceil(rad / CELL);
+    const c0 = Math.floor((x - G.x0) / CELL);
+    const r0 = Math.floor((z - G.z0) / CELL);
+    for (let r = r0 - n; r <= r0 + n; r++) {
+      for (let c = c0 - n; c <= c0 + n; c++) {
+        if (c < 0 || r < 0 || c >= COLS || r >= ROWS) continue;
+        const i = c + r * COLS;
+        const cx = G.x0 + (c + 0.5) * CELL;
+        const cz = G.z0 + (r + 0.5) * CELL;
+        if (kind[i] !== 2 || Math.hypot(cx - x, cz - z) > rad) continue;
+        topY[i] = y;
+        type[i] = T.plaza;
+        used[i] = 1;
+      }
     }
-    animated.push((t) => {
-      hub.rotation.z = -t * 0.55;
-    });
-
-    // 風車の前のベンチと人
-    box(world, 1.3, 0.12, 0.4, 1.9, 0.3, -0.2, C.wood);
-    box(world, 0.12, 0.3, 0.4, 1.4, 0, -0.2, C.brown);
-    box(world, 0.12, 0.3, 0.4, 2.4, 0, -0.2, C.brown);
-    person(world, -1.5, -0.3, 0.6);
-    person(world, -1.0, 0.1, -2.2, { s: 0.75 });
+    const g = group(world, x, y, z, rotDeg * DEG);
+    g.scale.setScalar(scale);
+    return g;
   }
+  const placePos = (key, dx = 0, dy = 0, dz = 0) => {
+    const x = G.places[key][0] + dx;
+    const z = G.places[key][1] + dz;
+    return [x, groundY(x, z) + dy, z];
+  };
 
-  // ---------- みんなの拠点（団体概要） ----------
-  function buildBase() {
-    const g = group(world, 6.2, 0, -0.3, 90 * DEG);
-    box(g, 5.2, 0.2, 3.4, 0, 0, -0.6, C.stone);
-    box(g, 5.0, 2.6, 3.0, 0, 0.2, -0.6, C.cream);
-    box(g, 5.4, 0.35, 3.4, 0, 2.8, -0.6, C.blue);
-    box(g, 2.2, 1.5, 3.0, 0, 3.15, -0.6, C.cream);
-    box(g, 2.6, 0.35, 3.4, 0, 4.65, -0.6, C.blue);
-    box(g, 1.6, 0.3, 2.4, 0, 5.0, -0.6, C.navy);
-    // 時計
-    box(g, 0.9, 0.9, 0.12, 0, 3.4, 0.92, C.white);
-    box(g, 0.08, 0.34, 0.14, 0, 3.85, 0.94, C.navy);
-    box(g, 0.28, 0.08, 0.14, 0.12, 3.82, 0.94, C.navy);
-    // 窓ととびら
-    for (const x of [-1.9, -1.1, 1.1, 1.9]) {
-      box(g, 0.55, 0.65, 0.1, x, 1.6, 0.92, C.teal);
-      box(g, 0.55, 0.55, 0.1, x, 0.6, 0.92, C.teal);
+  // 地形を1つの立体にまとめる（マスごとに上の面と、段差・がけの面を張る）
+  function buildTerrain() {
+    const make = () => ({ pos: [], nor: [], col: [], idx: [] });
+    const land = make();
+    const sea = make();
+    const color = new THREE.Color();
+    const va = new THREE.Vector3();
+    const vb = new THREE.Vector3();
+    const vn = new THREE.Vector3();
+    function quad(buf, p, n, hex, shade = 1) {
+      // 面の向きが n と合うように並べ直す
+      va.set(p[3] - p[0], p[4] - p[1], p[5] - p[2]);
+      vb.set(p[6] - p[0], p[7] - p[1], p[8] - p[2]);
+      const flip = vn.crossVectors(va, vb).dot(va.set(n[0], n[1], n[2])) < 0;
+      const base = buf.pos.length / 3;
+      buf.pos.push(...p);
+      color.setHex(hex).multiplyScalar(shade);
+      for (let k = 0; k < 4; k++) {
+        buf.nor.push(n[0], n[1], n[2]);
+        buf.col.push(color.r, color.g, color.b);
+      }
+      if (flip) buf.idx.push(base, base + 2, base + 1, base, base + 3, base + 2);
+      else buf.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
     }
-    box(g, 1.0, 1.5, 0.12, 0, 0.2, 0.92, C.orange);
-    box(g, 1.4, 0.14, 0.6, 0, 1.75, 1.1, C.coral);
-    sign(g, 'そよかぜ', 1.9, 0.5, 0, 2.48, 0.93, { bg: '#ffffff', fg: '#17414a' });
-    // 旗
-    box(g, 0.12, 4.2, 0.12, 3.1, 0, 1.4, C.grey);
-    const flag = dynamic(group(g, 3.16, 3.5, 1.4));
-    box(flag, 1.2, 0.75, 0.06, 0.6, 0, 0, C.teal);
-    box(flag, 0.35, 0.35, 0.08, 0.6, 0.2, 0, C.white);
-    animated.push((t) => {
-      flag.rotation.y = Math.sin(t * 2.4) * 0.28;
+    const SIDES = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const i = c + r * COLS;
+        if (!kind[i]) continue;
+        const isLand = kind[i] === 2;
+        const buf = isLand ? land : sea;
+        const x0 = G.x0 + c * CELL, x1 = x0 + CELL;
+        const z0 = G.z0 + r * CELL, z1 = z0 + CELL;
+        const h = topY[i];
+        const hex = isLand ? TYPE_COLOR[type[i]] : C.water;
+        const shade = isLand ? 0.95 + ((c + r) % 2) * 0.035 + Math.min(0.06, (h - 0.1) * 0.05) : 1 - ((c * 7 + r * 3) % 5) * 0.012;
+        quad(buf, [x0, h, z0, x0, h, z1, x1, h, z1, x1, h, z0], [0, 1, 0], hex, shade);
+        for (const [dc, dr] of SIDES) {
+          const cc = c + dc, rr = r + dr;
+          const j = cc < 0 || rr < 0 || cc >= COLS || rr >= ROWS ? -1 : cc + rr * COLS;
+          const nk = j < 0 ? 0 : kind[j];
+          const nh = nk ? topY[j] : BASE_Y;
+          if (nh >= h) continue;
+          let sideHex;
+          if (!isLand) sideHex = C.waterDeep;
+          else if (nk === 0) sideHex = C.soil;        // 隣の市町との境（切り口）
+          else if (nk === 1) sideHex = 0xe6d5a4;      // 海岸
+          else sideHex = hex;                          // 段差
+          const k = isLand && nk === 2 ? 0.8 : 1;
+          const p = dc
+            ? [dc > 0 ? x1 : x0, h, z0, dc > 0 ? x1 : x0, h, z1, dc > 0 ? x1 : x0, nh, z1, dc > 0 ? x1 : x0, nh, z0]
+            : [x0, h, dr > 0 ? z1 : z0, x1, h, dr > 0 ? z1 : z0, x1, nh, dr > 0 ? z1 : z0, x0, nh, dr > 0 ? z1 : z0];
+          quad(buf, p, [dc, 0, dr], sideHex, k);
+        }
+      }
+    }
+    const material = new THREE.MeshLambertMaterial({ vertexColors: true });
+    [[land, true], [sea, false]].forEach(([buf, cast]) => {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(buf.pos, 3));
+      geo.setAttribute('normal', new THREE.Float32BufferAttribute(buf.nor, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(buf.col, 3));
+      geo.setIndex(buf.idx);
+      const mesh = new THREE.Mesh(geo, material);
+      mesh.castShadow = cast;
+      mesh.receiveShadow = true;
+      world.add(mesh);
     });
-    // 前庭の人たち
-    person(g, -1.6, 2.1, 0.3);
-    person(g, -0.9, 2.3, -0.4);
-    person(g, 1.3, 2.2, 0.1);
-    person(g, 2.0, 2.4, -0.3, { s: 0.75 });
-    photoBoard(world, 'assets/image/thumb/board-group.jpg', 1.5, 2.0, 8.2, 2.3, 70 * DEG);
   }
 
-  // ---------- ただいまの家（代表挨拶） ----------
-  function buildHome() {
-    const g = group(world, 5.6, 0, -6.4, 138 * DEG);
-    box(g, 3.4, 2.2, 2.8, 0, 0, 0, C.white);
-    box(g, 4.0, 0.45, 3.6, 0, 2.2, 0, C.red);
-    box(g, 4.0, 0.45, 2.6, 0, 2.65, 0, C.red);
-    box(g, 4.0, 0.45, 1.5, 0, 3.1, 0, C.coral);
-    box(g, 4.0, 0.3, 0.5, 0, 3.55, 0, C.coral);
-    box(g, 0.5, 1.2, 0.5, 1.1, 2.9, -0.7, C.stone);
-    // 明かりのついたとびらと窓
-    box(g, 0.9, 1.5, 0.1, -0.6, 0, 1.42, C.yellow, { glow: 0.55 });
-    box(g, 0.5, 1.5, 0.08, -1.25, 0, 1.6, C.brown).rotation.y = 0.9;
-    box(g, 0.8, 0.7, 0.1, 0.9, 0.9, 1.42, C.yellow, { glow: 0.55 });
-    box(g, 0.1, 0.7, 0.8, 1.72, 0.9, 0, C.yellow, { glow: 0.55 });
-    sign(g, 'ただいま', 1.5, 0.48, 0.2, 1.95, 1.43, { bg: '#fff1d2', fg: '#c84a36' });
-    // 柵と花
-    for (let i = 0; i < 6; i++) box(g, 0.12, 0.5, 0.12, -2.4 + i * 0.3, 0, 2.6, C.white);
-    box(g, 1.7, 0.1, 0.1, -1.65, 0.3, 2.6, C.white);
-    [C.pink, C.yellow, C.coral, C.white].forEach((c, i) => flower(g, 1.0 + i * 0.35, 1.8, c));
-    // 煙
-    const puffs = [0, 1, 2].map((i) => {
-      const p = box(g, 0.4, 0.4, 0.4, 1.1, 4.2, -0.7, C.white, { cast: false });
-      p.userData.dynamic = true;
-      p.userData.off = i / 3;
-      return p;
+  // 森の木・集落の家・道路・川（数が多いので1つにまとめて描く）
+  function buildCover() {
+    const items = [];
+    const put = (x, y, z, sx, sy, sz, rot, hex) => items.push([x, y + sy / 2, z, sx, sy, sz, rot, hex]);
+    const BROAD = [0x62b85c, 0x55ab58, 0x74c468];
+    const CONIFER = [0x3f9d55, 0x358a4d];
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const i = c + r * COLS;
+        if (kind[i] !== 2 || used[i]) continue;
+        const x = G.x0 + (c + 0.2 + rand() * 0.6) * CELL;
+        const z = G.z0 + (r + 0.2 + rand() * 0.6) * CELL;
+        const y = topY[i];
+        const t = type[i];
+        if (t === T.broad && rand() < 0.5) {
+          const hex = rand() < 0.04 ? C.pink : pick(BROAD);
+          const s = 0.8 + rand() * 0.5;
+          put(x, y + 0.03, z, 0.2 * s, 0.13 * s, 0.2 * s, rand() * 3, hex);
+          put(x, y + 0.03 + 0.13 * s, z, 0.13 * s, 0.11 * s, 0.13 * s, rand() * 3, hex);
+        } else if (t === T.conifer && rand() < 0.6) {
+          const hex = pick(CONIFER);
+          const s = 0.8 + rand() * 0.5;
+          put(x, y + 0.02, z, 0.17 * s, 0.14 * s, 0.17 * s, 0, hex);
+          put(x, y + 0.02 + 0.14 * s, z, 0.1 * s, 0.17 * s, 0.1 * s, 0, hex);
+        } else if (t === T.town) {
+          // 能登の家は黒い瓦屋根
+          const n = rand() < 0.6 ? 2 : 1;
+          for (let k = 0; k < n; k++) {
+            const hx = G.x0 + (c + 0.25 + k * 0.5) * CELL + (rand() - 0.5) * 0.05;
+            const hz = G.z0 + (r + 0.3 + rand() * 0.4) * CELL;
+            const rot = rand() < 0.5 ? 0 : Math.PI / 2;
+            put(hx, y, hz, 0.11, 0.07, 0.085, rot, rand() < 0.5 ? C.white : C.cream);
+            put(hx, y + 0.07, hz, 0.13, 0.035, 0.1, rot, 0x3d4148);
+          }
+        }
+      }
+    }
+    // 線（道路・川）を地面に沿って小さな板でつなぐ
+    function strip(line, w, hex, lift) {
+      for (let i = 0; i + 3 < line.length; i += 2) {
+        const ax = line[i], az = line[i + 1], bx = line[i + 2], bz = line[i + 3];
+        const len = Math.hypot(bx - ax, bz - az);
+        const n = Math.max(1, Math.ceil(len / 0.16));
+        for (let k = 0; k < n; k++) {
+          const t = (k + 0.5) / n;
+          const x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+          put(x, groundY(x, z) + lift, z, len / n + 0.03, 0.02, w, -Math.atan2(bz - az, bx - ax), hex);
+        }
+      }
+    }
+    G.rivers.forEach((l) => strip(l, 0.07, 0x4fa9e0, 0.004));
+    G.prefectural.forEach((l) => strip(l, 0.05, 0xfffaf0, 0.01));
+    G.national.forEach((l) => strip(l, 0.085, 0xf7b24a, 0.016));
+
+    const mesh = new THREE.InstancedMesh(unit, new THREE.MeshLambertMaterial({ color: 0xffffff }), items.length);
+    mesh.userData.dynamic = true;
+    const dummy = new THREE.Object3D();
+    const col = new THREE.Color();
+    items.forEach((it, i) => {
+      dummy.position.set(it[0], it[1], it[2]);
+      dummy.scale.set(it[3], it[4], it[5]);
+      dummy.rotation.set(0, it[6], 0);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      mesh.setColorAt(i, col.setHex(it[7]));
     });
-    animated.push((t) => {
-      puffs.forEach((p) => {
-        const k = (t * 0.22 + p.userData.off) % 1;
-        p.position.set(1.1 + k * 0.7, 4.3 + k * 2.0, -0.7);
-        p.scale.setScalar(0.25 + k * 0.5 * (1 - k * 0.6));
-      });
-    });
-    // 手をふる代表
-    const rep = person(g, -0.2, 2.2, 0, { shirt: C.yellow, pants: C.black, s: 1.15 });
-    const arm = rep.userData.armR;
-    dynamic(rep, (t) => {
-      arm.position.set(0.34, 0.72, 0);
-      arm.rotation.z = -0.5 + Math.sin(t * 5) * 0.45;
-      rep.position.y = Math.abs(Math.sin(t * 2.5)) * 0.06;
-    });
-    person(g, 1.3, 2.6, -0.5, { s: 0.75 });
-    tree(g, 2.8, 0.6, { sakura: true });
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    world.add(mesh);
   }
 
-  // ---------- あばれ祭り（活動紹介） ----------
+  // 地名・名所の札（いつもカメラのほうを向く）
+  const labels = [];
+  function label(text, pos, { soyokaze = false, major = false, lift = 0 } = {}) {
+    const cv = document.createElement('canvas');
+    const ctx = cv.getContext('2d');
+    const font = '900 44px "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif';
+    ctx.font = font;
+    const w = Math.ceil(ctx.measureText(text).width) + 56;
+    const h = 76;
+    cv.width = w;
+    cv.height = h + 14;
+    ctx.font = font;
+    ctx.fillStyle = 'rgba(23,65,74,0.22)';
+    ctx.beginPath();
+    ctx.roundRect(2, 8, w - 4, h - 4, 36);
+    ctx.fill();
+    ctx.fillStyle = soyokaze ? '#f28c28' : '#ffffff';
+    ctx.beginPath();
+    ctx.roundRect(2, 2, w - 4, h - 4, 36);
+    ctx.fill();
+    ctx.fillStyle = soyokaze ? '#ffffff' : '#17414a';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, w / 2, h / 2 + 2);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, sizeAttenuation: false, depthTest: false, transparent: true }));
+    sp.center.set(0.5, 0);
+    sp.position.set(pos[0], pos[1] + lift, pos[2]);
+    sp.renderOrder = 10;
+    sp.userData = { aspect: cv.width / cv.height, major };
+    scene.add(sp);
+    labels.push(sp);
+    return sp;
+  }
+
+  // ===================================================
+  // 名所（位置は国土地理院の地図と、そよかぜのマップのピンから）
+  // ===================================================
+
+  // 黒い瓦の屋根（段々に重ねる）
+  function tileRoof(g, w, d, y, hex = 0x3d4148) {
+    box(g, w + 0.5, 0.28, d + 0.6, 0, y, 0, hex);
+    box(g, w + 0.5, 0.28, d * 0.62, 0, y + 0.28, 0, hex);
+    box(g, w + 0.5, 0.26, d * 0.26, 0, y + 0.56, 0, hex);
+  }
+
+  // ---------- 宇出津：能登町役場 ----------
+  function buildTownHall() {
+    const g = site('yakuba', 0, 0, 0.45, 0, 0.36);
+    box(g, 3.6, 2.2, 1.8, 0, 0, 0, C.cream);
+    box(g, 3.8, 0.2, 2.0, 0, 2.2, 0, C.grey);
+    box(g, 1.2, 0.8, 1.2, -0.8, 2.4, 0, C.cream);
+    for (const x of [-1.3, -0.65, 0.65, 1.3]) {
+      box(g, 0.4, 0.45, 0.1, x, 1.4, 0.92, C.teal);
+      box(g, 0.4, 0.45, 0.1, x, 0.6, 0.92, C.teal);
+    }
+    box(g, 0.7, 1.1, 0.1, 0, 0, 0.92, C.navy);
+    box(g, 0.1, 3.2, 0.1, 2.3, 0, 0.9, C.grey);
+    box(g, 0.8, 0.5, 0.05, 2.75, 2.7, 0.9, C.white);
+    label('能登町役場', placePos('yakuba', 0, 1.0, 0));
+  }
+
+  // ---------- 宇出津：大乗寺とつなぐマーケット（団体の活動の場） ----------
+  function buildTemple() {
+    const g = site('tsunagu', 1.25, -0.55, 0.62, 30, 0.36);
+    // 本堂
+    box(g, 3.6, 0.3, 2.8, 0, 0, -1.2, C.stone);
+    box(g, 3.0, 1.5, 2.2, 0, 0.3, -1.2, C.cream);
+    for (const x of [-1.4, -0.7, 0, 0.7, 1.4]) box(g, 0.14, 1.5, 0.14, x, 0.3, -0.05, C.darkBrown);
+    box(g, 1.0, 1.1, 0.1, 0, 0.3, -0.08, C.brown);
+    const roof = group(g, 0, 0, -1.2);
+    tileRoof(roof, 3.4, 2.6, 1.8);
+    box(g, 1.4, 0.15, 0.6, 0, 0, 0.35, C.stone);
+    // つなぐマーケットのテント
+    const tents = [[-2.2, 1.6, C.white], [-0.4, 2.2, C.yellow], [1.5, 1.7, C.white]];
+    tents.forEach(([x, z, c]) => {
+      for (const [px, pz] of [[-0.55, -0.45], [0.55, -0.45], [-0.55, 0.45], [0.55, 0.45]]) box(g, 0.07, 1.0, 0.07, x + px, 0, z + pz, C.grey);
+      box(g, 1.4, 0.14, 1.2, x, 1.0, z, c);
+      box(g, 0.9, 0.14, 0.75, x, 1.14, z, c);
+      box(g, 1.0, 0.45, 0.5, x, 0, z, C.wood);
+      box(g, 0.2, 0.2, 0.2, x - 0.25, 0.45, z, C.coral);
+      box(g, 0.2, 0.2, 0.2, x + 0.2, 0.45, z, C.teal);
+      person(g, x, z - 0.5, 0, { s: 0.8 });
+    });
+    // 子どもの遊び場（射的・なげなわ）
+    box(g, 0.9, 0.7, 0.2, 2.9, 0, 0.4, C.wood);
+    box(g, 0.2, 0.2, 0.2, 2.65, 0.7, 0.4, C.red);
+    box(g, 0.2, 0.2, 0.2, 3.1, 0.7, 0.4, C.yellow);
+    person(g, 2.6, 1.3, Math.PI, { s: 0.6 });
+    person(g, 3.2, 1.4, Math.PI, { s: 0.6 });
+    person(g, 0.6, 3.0, Math.PI, { shirt: C.coral, s: 0.8 });
+    person(g, -1.2, 3.1, Math.PI + 0.3, { s: 0.6 });
+    photoBoard(g, 'assets/image/thumb/board-market.jpg', 1.9, 1.42, -3.3, 0.2, 0.5);
+    label('大乗寺・つなぐマーケット', placePos('tsunagu', 1.25, 1.15, -0.55), { soyokaze: true });
+  }
+
+  // ---------- 宇出津：あばれ祭り ----------
   function buildFestival() {
-    const g = group(world, -5.6, 0, -6.2, 222 * DEG);
-
-    // 切子（きりこ）：大きな灯ろうをみんなで担ぐ
+    const g = site('abare', -1.35, -0.4, 0.62, -20, 0.36);
     function kiriko(x, z, h, phase) {
       const k = dynamic(group(g, x, 0, z));
       box(k, 3.0, 0.12, 0.12, 0, 0.78, -0.38, C.brown);
       box(k, 3.0, 0.12, 0.12, 0, 0.78, 0.38, C.brown);
       box(k, 1.1, 0.25, 1.1, 0, 0.84, 0, C.red);
       box(k, 0.86, h, 0.86, 0, 1.09, 0, 0xfff0c2, { glow: 0.5 });
-      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-        box(k, 0.1, h, 0.1, sx * 0.44, 1.09, sz * 0.44, C.black);
-      }
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) box(k, 0.1, h, 0.1, sx * 0.44, 1.09, sz * 0.44, C.black);
       box(k, 0.96, 0.1, 0.96, 0, 1.09 + h * 0.5, 0, C.red);
       box(k, 1.3, 0.22, 1.3, 0, 1.09 + h, 0, C.black);
       box(k, 0.9, 0.2, 0.9, 0, 1.31 + h, 0, C.red);
       box(k, 0.4, 0.3, 0.4, 0, 1.51 + h, 0, C.yellow);
-      for (const [px, pz] of [[-1.3, -0.38], [1.3, -0.38], [-1.3, 0.38], [1.3, 0.38], [-0.8, 0.38], [0.8, -0.38]]) {
+      for (const [px, pz] of [[-1.3, -0.38], [1.3, -0.38], [-1.3, 0.38], [1.3, 0.38]]) {
         person(k, px, pz * 1.9, pz > 0 ? Math.PI : 0, { shirt: C.white, pants: C.navy, s: 0.85 });
       }
       animated.push((t) => {
@@ -434,241 +564,374 @@ function start() {
         k.rotation.z = Math.sin(t * 1.3 + phase) * 0.045;
       });
     }
-    kiriko(0, 0, 3.3, 0);
-    kiriko(-2.5, -0.6, 2.6, 1.3);
-    kiriko(2.4, -0.9, 2.2, 2.4);
+    kiriko(0, 0, 3.4, 0);
+    kiriko(-2.4, 0.5, 2.8, 1.3);
+    kiriko(2.3, 0.6, 2.5, 2.4);
 
-    // たいまつ
-    const torch = group(g, 2.6, 0, 1.6);
-    box(torch, 0.5, 0.2, 0.5, 0, 0, 0, C.stone);
-    box(torch, 0.2, 2.2, 0.2, 0, 0.2, 0, C.darkBrown);
-    box(torch, 0.5, 0.3, 0.5, 0, 2.4, 0, C.brown);
+    // 神輿（あばれるほど良い）
+    const mikoshi = dynamic(group(g, 0.3, 0, 2.6));
+    box(mikoshi, 2.2, 0.1, 0.1, 0, 0.75, -0.3, C.brown);
+    box(mikoshi, 2.2, 0.1, 0.1, 0, 0.75, 0.3, C.brown);
+    box(mikoshi, 0.9, 0.7, 0.9, 0, 0.82, 0, C.black);
+    box(mikoshi, 0.95, 0.12, 0.95, 0, 1.2, 0, C.yellow);
+    box(mikoshi, 1.3, 0.2, 1.3, 0, 1.52, 0, C.yellow);
+    box(mikoshi, 0.8, 0.2, 0.8, 0, 1.72, 0, C.black);
+    box(mikoshi, 0.25, 0.3, 0.25, 0, 1.92, 0, C.yellow);
+    for (const [px, pz] of [[-0.9, -0.6], [0.9, -0.6], [-0.9, 0.6], [0.9, 0.6]]) {
+      person(mikoshi, px, pz, pz > 0 ? Math.PI : 0, { shirt: C.white, pants: C.white, s: 0.85 });
+    }
+    animated.push((t) => {
+      mikoshi.rotation.z = Math.sin(t * 5.2) * 0.14;
+      mikoshi.position.y = Math.abs(Math.sin(t * 4.1)) * 0.2;
+    });
+
+    // 大松明
+    const torch = group(g, 2.9, 0, 2.6);
+    box(torch, 0.25, 2.6, 0.25, 0, 0, 0, C.darkBrown);
+    box(torch, 0.6, 0.35, 0.6, 0, 2.6, 0, C.brown);
     const flames = [C.red, C.orange, C.yellow].map((c, i) => {
-      const f = box(torch, 0.42 - i * 0.1, 0.45, 0.42 - i * 0.1, 0, 2.7 + i * 0.3, 0, c, { glow: 0.8, cast: false });
+      const f = box(torch, 0.55 - i * 0.13, 0.5, 0.55 - i * 0.13, 0, 2.95 + i * 0.35, 0, c, { glow: 0.8, cast: false });
       f.userData.dynamic = true;
       return f;
     });
     animated.push((t) => {
       flames.forEach((f, i) => {
-        const s = 1 + Math.sin(t * 9 + i * 2.1) * 0.22;
-        f.scale.y = 0.45 * s;
+        f.scale.y = 0.5 * (1 + Math.sin(t * 9 + i * 2.1) * 0.22);
         f.position.x = Math.sin(t * 7 + i) * 0.05;
       });
     });
-
-    // ちょうちんの列
-    box(g, 0.12, 2.3, 0.12, -3.6, 0, 2.2, C.brown);
-    box(g, 0.12, 2.3, 0.12, 0.6, 0, 2.4, C.brown);
-    box(g, 4.3, 0.06, 0.06, -1.5, 2.2, 2.3, C.darkBrown);
-    for (let i = 0; i < 6; i++) {
-      box(g, 0.3, 0.38, 0.3, -3.2 + i * 0.68, 1.78, 2.3, i % 2 ? C.white : C.red, { glow: 0.35 });
-    }
-    // 太鼓
-    box(g, 0.9, 0.5, 0.9, -2.2, 0, 2.9, C.wood);
-    box(g, 0.8, 0.5, 0.8, -2.2, 0.5, 2.9, C.red);
-    box(g, 0.7, 0.08, 0.7, -2.2, 1.0, 2.9, C.cream);
-    person(g, -1.4, 3.0, -1.2, { shirt: C.navy });
-    person(g, 1.2, 2.9, 2.8, { s: 0.75 });
-    photoBoard(world, 'assets/image/thumb/board-festival.jpg', 2.1, 1.4, -8.0, -8.4, 228 * DEG);
+    photoBoard(g, 'assets/image/thumb/board-festival.jpg', 2.1, 1.4, -3.0, 2.6, 0.5);
+    label('あばれ祭り', placePos('abare', -1.35, 1.75, -0.4), { soyokaze: true });
   }
 
-  // ---------- うまいもん商店（魅力発信） ----------
-  function buildMarket() {
-    const g = group(world, -6.2, 0, -0.3, 292 * DEG);
-
-    function stall(x, z, stripe, label) {
-      const s = group(g, x, 0, z);
-      box(s, 3.4, 0.9, 1.1, 0, 0, 0, C.wood);
-      box(s, 3.6, 0.1, 1.3, 0, 0.9, 0, C.cream);
-      for (const [px, pz] of [[-1.65, -0.5], [1.65, -0.5], [-1.65, 0.5], [1.65, 0.5]]) {
-        box(s, 0.12, 2.5, 0.12, px, 0, pz, C.brown);
-      }
-      // しましまの屋根
-      const awning = group(s, 0, 2.5, 0);
-      awning.rotation.x = 0.22;
-      for (let i = 0; i < 8; i++) {
-        box(awning, 0.46, 0.14, 2.0, -1.61 + i * 0.46, 0, 0.15, i % 2 ? C.white : stripe);
-      }
-      if (label) sign(s, label, 3.0, 0.62, 0, 3.15, 0.7, { bg: '#17414a', fg: '#ffffff' });
-      // 売り物
-      const goods = [C.leafDark, C.orange, C.yellow, C.red, C.teal, C.pink];
-      for (let i = 0; i < 6; i++) {
-        const bottle = i % 2 === 0;
-        box(s, bottle ? 0.2 : 0.42, bottle ? 0.55 : 0.28, bottle ? 0.2 : 0.42, -1.3 + i * 0.52, 1.0, 0.1, goods[i]);
-        if (bottle) box(s, 0.1, 0.16, 0.1, -1.3 + i * 0.52, 1.55, 0.1, C.white);
-      }
-      person(s, 0.4, -0.95, 0, { shirt: C.red });
-      return s;
+  // ---------- 宇出津：酒蔵（竹葉） ----------
+  function buildBrewery() {
+    const g = site('port', -1.7, -0.05, 0.42, 10, 0.36);
+    box(g, 3.0, 0.5, 2.0, 0, 0, 0, C.darkBrown);
+    box(g, 3.0, 1.3, 2.0, 0, 0.5, 0, C.white);
+    tileRoof(g, 3.0, 2.0, 1.8);
+    box(g, 0.8, 1.1, 0.1, -0.6, 0, 1.02, C.brown);
+    box(g, 0.34, 0.34, 0.34, -0.6, 1.3, 1.15, 0x7a8f4a);   // 杉玉
+    sign(g, '竹葉', 1.1, 0.5, 0.75, 1.2, 1.02, { bg: '#4c3526', fg: '#fff1d2' });
+    for (const x of [1.9, 2.5]) {
+      box(g, 0.5, 0.55, 0.5, x, 0, 0.8, C.cream);
+      box(g, 0.52, 0.12, 0.52, x, 0.2, 0.8, C.red);
     }
-    stall(0, 0, C.red, 'うまいもん商店');
-    stall(0.4, -3.0, C.teal, null).rotation.y = 0.25;
+    label('宇出津の酒蔵「竹葉」', placePos('port', -1.7, 0.95, -0.05));
+  }
 
-    // 木箱
-    box(g, 0.8, 0.6, 0.8, 2.6, 0, 0.6, C.wood);
-    box(g, 0.7, 0.5, 0.7, 2.55, 0.6, 0.6, C.brown);
-    box(g, 0.25, 0.25, 0.25, 2.4, 1.1, 0.5, C.orange);
-    box(g, 0.25, 0.25, 0.25, 2.7, 1.1, 0.7, C.red);
-    box(g, 0.8, 0.6, 0.8, -2.7, 0, 0.9, C.wood);
-
-    // お客さん
-    person(g, -0.9, 1.5, Math.PI + 0.2);
-    person(g, 0.3, 1.7, Math.PI - 0.2);
-    person(g, 1.2, 1.5, Math.PI, { s: 0.75 });
-
-    // 三角の旗
-    box(g, 0.1, 3.2, 0.1, -3.2, 0, 2.6, C.brown);
-    box(g, 0.1, 3.2, 0.1, 3.2, 0, 2.6, C.brown);
-    const bunting = dynamic(group(g, 0, 3.0, 2.6));
-    const flagColors = [C.coral, C.yellow, C.teal, C.pink, C.blue, C.orange];
-    for (let i = 0; i < 12; i++) {
-      const sag = Math.pow((i - 5.5) / 5.5, 2) * 0.45 - 0.45;
-      box(bunting, 0.3, 0.32, 0.04, -3.0 + i * 0.545, sag, 0, flagColors[i % 6], { cast: false });
+  // ---------- 宇出津港と弁天島 ----------
+  function fishingBoat(x, z, rot, lamps) {
+    const boat = dynamic(group(world, x, SEA_Y, z, rot));
+    boat.scale.setScalar(0.3);
+    box(boat, 2.6, 0.5, 1.0, 0, 0, 0, C.white);
+    box(boat, 2.2, 0.2, 0.8, 0, -0.12, 0, C.blue);
+    box(boat, 0.9, 0.7, 0.75, -0.5, 0.5, 0, C.cream);
+    box(boat, 1.1, 0.12, 0.95, -0.5, 1.2, 0, C.blue);
+    if (lamps) {
+      // イカ釣り船の集魚灯
+      box(boat, 0.06, 1.3, 0.06, -1.1, 0.5, 0, C.grey);
+      box(boat, 0.06, 1.3, 0.06, 1.1, 0.5, 0, C.grey);
+      box(boat, 2.3, 0.05, 0.05, 0, 1.75, 0, C.grey);
+      for (let i = 0; i < 5; i++) box(boat, 0.2, 0.2, 0.2, -0.9 + i * 0.45, 1.52, 0, 0xfff3a0, { glow: 0.9, cast: false });
     }
+    const ph = x * 1.7;
     animated.push((t) => {
-      bunting.rotation.x = Math.sin(t * 2) * 0.12;
+      boat.position.y = SEA_Y + Math.sin(t * 1.5 + ph) * 0.02;
+      boat.rotation.z = Math.sin(t * 1.1 + ph) * 0.06;
     });
-    photoBoard(world, 'assets/image/thumb/board-market.jpg', 1.9, 1.42, -8.2, 2.5, 300 * DEG);
   }
 
-  // ---------- ポストと海（お問い合わせ） ----------
-  function buildContact() {
-    const g = group(world, 1.5, 0, 5.0, 12 * DEG);
-    // 赤いポスト
-    box(g, 0.9, 0.2, 0.8, 0, 0, 0, C.stone);
-    box(g, 0.8, 1.3, 0.7, 0, 0.2, 0, C.red);
-    box(g, 0.9, 0.18, 0.8, 0, 1.5, 0, C.red);
-    box(g, 0.5, 0.08, 0.06, 0, 1.2, 0.36, C.black);
-    box(g, 0.36, 0.06, 0.05, 0, 0.92, 0.36, C.white);
-    box(g, 0.26, 0.06, 0.05, 0, 0.8, 0.36, C.white);
-    box(g, 0.06, 0.26, 0.05, 0, 0.54, 0.36, C.white);
+  function buildPort() {
+    const [px, , pz] = placePos('port');
+    fishingBoat(px + 0.25, pz + 0.75, 0.3, false);
+    fishingBoat(px + 0.95, pz + 1.05, -0.5, false);
+    fishingBoat(px - 0.3, pz + 1.3, 1.0, false);
+    // 港で手をふる代表
+    const g = site('port', -0.1, -0.1, 0.3, 0, 0.36);
+    box(g, 2.2, 0.12, 0.8, 0.4, 0, 0.6, C.stone);
+    const rep = person(g, 0, 0.2, 0, { shirt: C.yellow, pants: C.black, s: 1.3 });
+    const arm = rep.userData.armR;
+    dynamic(rep, (t) => {
+      arm.position.set(0.34, 0.72, 0);
+      arm.rotation.z = -0.5 + Math.sin(t * 5) * 0.45;
+      rep.position.y = Math.abs(Math.sin(t * 2.5)) * 0.06;
+    });
+    person(g, 0.8, 0.3, -0.3, { s: 1.0 });
+    person(g, 1.3, 0.1, 0.2, { s: 0.8 });
+    sign(g, 'ただいま', 1.6, 0.5, 0.5, 1.9, 0.2, { bg: '#fff1d2', fg: '#c84a36', both: true });
+    box(g, 0.08, 1.7, 0.08, -0.25, 0, 0.2, C.brown);
+    box(g, 0.08, 1.7, 0.08, 1.25, 0, 0.2, C.brown);
+    label('宇出津港', placePos('port', 0.4, 0.2, 0.9));
 
+    // 弁天島（遠島山の先の小さな島）
+    const b = site('benten', 0, 0, 0.2, 0, 0.36);
+    box(b, 1.0, 0.5, 0.9, 0, 0, 0, C.grey);
+    box(b, 0.12, 0.9, 0.12, -0.28, 0.5, 0.2, C.red);
+    box(b, 0.12, 0.9, 0.12, 0.28, 0.5, 0.2, C.red);
+    box(b, 0.9, 0.12, 0.14, 0, 1.3, 0.2, C.red);
+    tree(b, 0.1, -0.2, { s: 0.6 });
+  }
+
+  // ---------- 瑞穂：マルガージェラート ----------
+  function cow(g, x, z, rot) {
+    const c = group(g, x, 0, z, rot);
+    for (const [lx, lz] of [[-0.3, -0.15], [0.3, -0.15], [-0.3, 0.15], [0.3, 0.15]]) box(c, 0.12, 0.3, 0.12, lx, 0, lz, C.white);
+    box(c, 0.95, 0.45, 0.5, 0, 0.3, 0, C.white);
+    box(c, 0.35, 0.3, 0.52, -0.15, 0.4, 0, C.black);
+    box(c, 0.35, 0.35, 0.4, 0.6, 0.5, 0, C.white);
+    box(c, 0.16, 0.14, 0.42, 0.72, 0.5, 0, C.pink);
+    return c;
+  }
+
+  function buildGelato() {
+    const g = site('mizuho', 0, 0, 0.5, -30, 0.36);
+    box(g, 2.6, 1.4, 1.8, -0.6, 0, -0.4, C.cream);
+    box(g, 3.0, 0.3, 2.2, -0.6, 1.4, -0.4, C.teal);
+    box(g, 2.2, 0.3, 1.4, -0.6, 1.7, -0.4, C.teal);
+    box(g, 0.7, 1.0, 0.1, -1.0, 0, 0.52, C.brown);
+    box(g, 0.9, 0.6, 0.1, 0, 0.5, 0.52, C.white);
+    sign(g, 'ジェラート', 2.0, 0.42, -0.6, 1.25, 0.53, { bg: '#ffffff', fg: '#2bb3a8' });
+    // 大きなジェラート
+    const cone = group(g, 1.9, 0, 0.6);
+    box(cone, 0.25, 0.4, 0.25, 0, 0, 0, C.wood);
+    box(cone, 0.4, 0.4, 0.4, 0, 0.4, 0, 0xe2b272);
+    box(cone, 0.56, 0.4, 0.56, 0, 0.8, 0, 0xe2b272);
+    box(cone, 0.8, 0.5, 0.8, 0, 1.2, 0, C.white);
+    box(cone, 0.66, 0.45, 0.66, 0, 1.7, 0, C.pink);
+    box(cone, 0.46, 0.38, 0.46, 0, 2.15, 0, 0xbfe3a0);
+    cow(g, -2.4, 1.4, 0.4);
+    cow(g, 0.2, 2.0, 2.6);
+    person(g, 1.0, 1.4, 0.5);
+    label('マルガージェラート', placePos('mizuho', 0, 1.0, 0));
+  }
+
+  // ---------- 道の駅 桜峠：関東から車で着く町の入口 ----------
+  function buildSakura() {
+    const g = site('sakura', 0, 0, 0.5, -55, 0.36);
+    box(g, 2.6, 1.2, 1.5, 0, 0, -0.6, C.cream);
+    box(g, 3.0, 0.3, 1.9, 0, 1.2, -0.6, C.red);
+    box(g, 2.2, 0.28, 1.2, 0, 1.5, -0.6, C.red);
+    box(g, 0.7, 0.9, 0.1, 0, 0, 0.17, C.navy);
+    tree(g, -2.2, -0.4, { sakura: true });
+    tree(g, 2.3, -0.6, { sakura: true, s: 1.1 });
+    tree(g, 1.6, -1.7, { sakura: true, s: 0.9 });
+    // そよかぜの車
+    const car = group(g, -0.6, 0, 1.5, 0.2);
+    box(car, 1.7, 0.6, 0.85, 0, 0.16, 0, C.orange);
+    box(car, 1.1, 0.4, 0.8, -0.15, 0.76, 0, C.white);
+    box(car, 0.9, 0.26, 0.84, -0.15, 0.8, 0, C.navy);
+    for (const [wx, wz] of [[-0.5, 0.4], [0.5, 0.4], [-0.5, -0.4], [0.5, -0.4]]) box(car, 0.32, 0.32, 0.12, wx, 0, wz, C.black);
+    person(g, 0.9, 1.5, 0.3, { shirt: C.coral });
+    person(g, 1.5, 1.3, -0.2, { shirt: C.teal });
+    person(g, 2.0, 1.6, 0.1, { s: 0.8 });
+    // 道しるべ
+    const post = group(g, -2.3, 0, 1.3);
+    box(post, 0.12, 2.3, 0.12, 0, 0, 0, C.brown);
+    box(post, 1.9, 0.5, 0.08, 0.2, 1.7, 0, C.white);
+    sign(post, '関東から車で約7時間', 1.8, 0.4, 0.2, 1.95, 0.05, { bg: '#f28c28', fg: '#ffffff' });
+    box(post, 1.3, 0.42, 0.08, 0.2, 1.15, 0, C.white);
+    sign(post, '宇出津へ', 1.2, 0.34, 0.2, 1.36, 0.05, { bg: '#2bb3a8', fg: '#ffffff' });
+    label('道の駅 桜峠', placePos('sakura', 0, 0.85, 0));
+  }
+
+  // ---------- 柳田植物公園（天文台 満天星） ----------
+  function buildObservatory() {
+    const g = site('park', 0, 0, 0.42, 20, 0.36);
+    box(g, 2.0, 1.2, 1.6, 0, 0, 0, C.cream);
+    box(g, 2.2, 0.15, 1.8, 0, 1.2, 0, C.grey);
+    box(g, 1.3, 0.4, 1.3, 0, 1.35, 0, C.white);
+    box(g, 1.05, 0.35, 1.05, 0, 1.75, 0, C.white);
+    box(g, 0.65, 0.25, 0.65, 0, 2.1, 0, C.white);
+    box(g, 0.2, 0.9, 0.7, 0, 1.5, 0.4, C.navy);
+    [C.pink, C.yellow, C.coral, C.purple, C.white].forEach((c, i) => {
+      box(g, 0.3, 0.14, 0.3, -1.6 + i * 0.45, 0, 1.4, c, { cast: false });
+      box(g, 0.3, 0.14, 0.3, -1.4 + i * 0.45, 0, 1.9, c, { cast: false });
+    });
+    label('柳田植物公園・満天星', placePos('park', 0, 0.9, 0));
+  }
+
+  // ---------- 内浦放牧場 ----------
+  function buildPasture() {
+    const g = site('bokujo', 0, 0, 0.42, 0, 0.36);
+    cow(g, -0.8, 0.2, 0.3);
+    cow(g, 0.7, -0.5, 2.4);
+    cow(g, 0.5, 0.9, -0.6);
+    for (let i = 0; i < 7; i++) box(g, 0.1, 0.4, 0.1, -1.8 + i * 0.6, 0, 1.6, C.white);
+    box(g, 3.7, 0.08, 0.08, 0, 0.26, 1.6, C.white);
+    label('内浦放牧場', placePos('bokujo', 0, 0.45, 0));
+  }
+
+  // ---------- 真脇遺跡（縄文の環状木柱列） ----------
+  function buildMawaki() {
+    const g = site('mawaki', 0, -0.25, 0.45, 0, 0.36);
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2;
+      const p = box(g, 0.34, 1.7, 0.2, Math.cos(a) * 1.3, 0, Math.sin(a) * 1.3 + 0.4, C.brown);
+      p.rotation.y = -a + Math.PI / 2;
+    }
+    // 竪穴住居
+    const hut = group(g, -2.0, 0, -0.9);
+    box(hut, 1.5, 0.3, 1.5, 0, 0, 0, 0xcfae6a);
+    box(hut, 1.15, 0.3, 1.15, 0, 0.3, 0, 0xc4a25e);
+    box(hut, 0.8, 0.3, 0.8, 0, 0.6, 0, 0xcfae6a);
+    box(hut, 0.4, 0.25, 0.4, 0, 0.9, 0, 0xc4a25e);
+    box(hut, 0.4, 0.4, 0.1, 0, 0, 0.76, C.darkBrown);
+    person(g, 1.9, 1.3, -0.6);
+    label('真脇遺跡', placePos('mawaki', 0, 0.75, -0.25));
+  }
+
+  // ---------- 小木港（イカ釣り船）と九十九湾のイカキング ----------
+  function buildSquid() {
+    const [ox, , oz] = placePos('ogi');
+    fishingBoat(ox + 0.1, oz + 0.75, 0.2, true);
+    fishingBoat(ox + 0.9, oz + 0.95, -0.4, true);
+    label('小木港', placePos('ogi', 0, 0.2, 0.2), { major: true });
+
+    const g = site('tsukumo', 0, 0, 0.5, 100, 0.36);
+    // イカの駅
+    box(g, 2.4, 1.1, 1.4, -1.4, 0, -1.0, C.white);
+    box(g, 2.7, 0.25, 1.7, -1.4, 1.1, -1.0, C.blue);
+    box(g, 0.6, 0.8, 0.1, -1.4, 0, -0.28, C.navy);
+    // イカキング（大きなスルメイカのモニュメント）
+    const k = group(g, 0.9, 0, 0.6, -0.5);
+    const SQ = 0xf2a9a2;
+    box(k, 2.4, 1.0, 1.0, 0, 0.5, 0, SQ);
+    box(k, 0.9, 0.8, 0.8, -1.6, 0.6, 0, SQ);
+    box(k, 0.5, 0.5, 0.5, -2.2, 0.75, 0, SQ);
+    box(k, 0.9, 0.12, 1.8, -1.6, 0.94, 0, 0xf6c0b8);   // ひれ
+    box(k, 2.4, 0.3, 0.9, 0, 0.32, 0, C.white);
+    box(k, 0.8, 0.8, 0.9, 1.5, 0.4, 0, 0xf6c0b8);
+    box(k, 0.26, 0.26, 0.1, 1.5, 0.85, 0.46, C.white);
+    box(k, 0.26, 0.26, 0.1, 1.5, 0.85, -0.46, C.white);
+    box(k, 0.13, 0.13, 0.12, 1.55, 0.9, 0.48, C.black);
+    box(k, 0.13, 0.13, 0.12, 1.55, 0.9, -0.48, C.black);
+    // 足
+    [[-0.6, 0.5], [-0.3, 1.1], [0, 1.4], [0.3, 1.1], [0.6, 0.5]].forEach(([z, up]) => {
+      box(k, 1.0, 0.2, 0.18, 2.3, 0.2, z, SQ);
+      box(k, 0.2, up, 0.18, 2.9, 0.2, z, SQ);
+    });
+    person(g, 1.6, 2.3, Math.PI, { s: 0.85 });
+    person(g, 0.6, 2.4, Math.PI - 0.3, { s: 0.6 });
+    label('九十九湾・イカキング', placePos('tsukumo', 0, 0.95, 0));
+  }
+
+  // ---------- 松波：城址公園と郵便局（お問い合わせ） ----------
+  function buildMatsunami() {
+    const c = site('matsunami', -0.75, 0.35, 0.4, 150, 0.36);
+    box(c, 3.0, 0.7, 2.2, 0, 0, -0.6, C.stone);
+    box(c, 2.4, 0.5, 1.7, 0, 0.7, -0.6, C.grey);
+    box(c, 0.18, 1.5, 0.18, -0.7, 0, 1.0, C.darkBrown);
+    box(c, 0.18, 1.5, 0.18, 0.7, 0, 1.0, C.darkBrown);
+    box(c, 2.0, 0.18, 0.22, 0, 1.3, 1.0, C.darkBrown);
+    tree(c, -0.6, -0.7, { s: 0.9 }).position.y = 1.2;
+    tree(c, 0.7, -0.5, { s: 0.75 }).position.y = 1.2;
+    label('松波城址公園', placePos('matsunami', -0.75, 0.9, 0.35));
+
+    const g = site('matsupost', 0.1, -0.1, 0.4, 150, 0.36);
+    box(g, 2.2, 1.3, 1.5, -0.3, 0, -0.9, C.cream);
+    box(g, 2.5, 0.25, 1.8, -0.3, 1.3, -0.9, C.orange);
+    box(g, 0.6, 0.9, 0.1, -0.3, 0, -0.13, C.navy);
+    sign(g, '〒 松波郵便局', 1.9, 0.36, -0.3, 1.1, -0.12, { bg: '#ffffff', fg: '#e8533d' });
+    // 赤いポスト
+    const post = group(g, 1.5, 0, 0.3);
+    box(post, 0.6, 0.15, 0.55, 0, 0, 0, C.stone);
+    box(post, 0.55, 1.0, 0.5, 0, 0.15, 0, C.red);
+    box(post, 0.62, 0.14, 0.56, 0, 1.15, 0, C.red);
+    box(post, 0.34, 0.06, 0.05, 0, 0.9, 0.26, C.black);
     // ふわふわ浮かぶ手紙
-    const letter = dynamic(group(g, 0, 2.4, 0));
-    box(letter, 1.3, 0.85, 0.12, 0, 0, 0, C.white);
-    box(letter, 1.3, 0.12, 0.14, 0, 0.73, 0, C.coral);
-    box(letter, 0.9, 0.12, 0.14, 0, 0.61, 0, C.coral);
-    box(letter, 0.5, 0.12, 0.14, 0, 0.49, 0, C.coral);
-    box(letter, 0.22, 0.22, 0.16, 0, 0.2, 0, C.red);
+    const letter = dynamic(group(g, 1.5, 2.0, 0.3));
+    box(letter, 1.1, 0.72, 0.1, 0, 0, 0, C.white);
+    box(letter, 1.1, 0.1, 0.12, 0, 0.62, 0, C.coral);
+    box(letter, 0.7, 0.1, 0.12, 0, 0.52, 0, C.coral);
+    box(letter, 0.36, 0.1, 0.12, 0, 0.42, 0, C.coral);
+    box(letter, 0.2, 0.2, 0.14, 0, 0.16, 0, C.red);
     animated.push((t) => {
-      letter.position.y = 2.35 + Math.sin(t * 1.8) * 0.18;
+      letter.position.y = 2.0 + Math.sin(t * 1.8) * 0.16;
       letter.rotation.y = Math.sin(t * 0.9) * 0.5;
     });
-
-    // 手紙を出しにきた人
-    person(g, -0.9, 0.5, 1.2, { shirt: C.teal });
-    person(g, -1.5, 0.3, 1.0, { s: 0.75 });
-
-    // 行き先の矢印
-    const post = group(world, -1.6, 0, 5.2, 8 * DEG);
-    box(post, 0.14, 2.6, 0.14, 0, 0, 0, C.brown);
-    [['能登', '#f2705b', 2.1, 0.25], ['東北', '#2bb3a8', 1.6, -0.2], ['関東', '#f28c28', 1.1, 0.15]].forEach(([txt, bg, y, r]) => {
-      const b = group(post, 0, y, 0, r);
-      box(b, 1.2, 0.4, 0.08, 0.45, 0, 0, C.white);
-      sign(b, txt, 1.1, 0.34, 0.45, 0.2, 0.05, { bg, fg: '#ffffff' });
-    });
-    // ベンチ
-    box(world, 1.4, 0.12, 0.45, 4.0, 0.32, 5.2, C.wood);
-    box(world, 0.12, 0.32, 0.4, 3.45, 0, 5.2, C.brown);
-    box(world, 0.12, 0.32, 0.4, 4.55, 0, 5.2, C.brown);
-    box(world, 1.4, 0.5, 0.1, 4.0, 0.44, 4.98, C.wood);
-
-    // 海の鳥居
-    const torii = group(world, -5.5, -0.5, 9.0);
-    box(torii, 0.26, 2.6, 0.26, -0.9, 0, 0, C.red);
-    box(torii, 0.26, 2.6, 0.26, 0.9, 0, 0, C.red);
-    box(torii, 2.5, 0.2, 0.26, 0, 2.0, 0, C.red);
-    box(torii, 3.0, 0.24, 0.34, 0, 2.6, 0, C.red);
-    box(torii, 3.2, 0.12, 0.4, 0, 2.84, 0, C.black);
-
-    // 灯台
-    const light = group(world, 10.2, -0.1, 7.0);
-    box(light, 1.8, 0.5, 1.8, 0, 0, 0, C.stone);
-    [C.white, C.red, C.white, C.red, C.white].forEach((c, i) => box(light, 1.3 - i * 0.1, 0.8, 1.3 - i * 0.1, 0, 0.5 + i * 0.8, 0, c));
-    box(light, 1.2, 0.12, 1.2, 0, 4.5, 0, C.navy);
-    const lamp = box(light, 0.6, 0.6, 0.6, 0, 4.62, 0, C.yellow, { glow: 0.9 });
-    lamp.userData.dynamic = true;
-    box(light, 0.9, 0.3, 0.9, 0, 5.22, 0, C.red);
-    animated.push((t) => {
-      lamp.rotation.y = t * 1.2;
-    });
-
-    // 漁船
-    const boat = dynamic(group(world, 5.2, -0.42, 10.0, -0.4));
-    box(boat, 2.6, 0.5, 1.1, 0, 0, 0, C.white);
-    box(boat, 2.2, 0.2, 0.9, 0, -0.15, 0, C.blue);
-    box(boat, 0.6, 0.35, 0.8, 1.5, 0.1, 0, C.white);
-    box(boat, 0.9, 0.7, 0.8, -0.5, 0.5, 0, C.cream);
-    box(boat, 1.1, 0.12, 1.0, -0.5, 1.2, 0, C.blue);
-    box(boat, 0.08, 1.2, 0.08, 0.5, 0.5, 0, C.brown);
-    box(boat, 0.5, 0.32, 0.05, 0.78, 1.36, 0, C.coral);
-    animated.push((t) => {
-      boat.position.y = -0.42 + Math.sin(t * 1.5) * 0.07;
-      boat.rotation.z = Math.sin(t * 1.1) * 0.05;
-      boat.position.x = 5.2 + Math.sin(t * 0.25) * 1.6;
-    });
-
-    // 波
-    for (let i = 0; i < 9; i++) {
-      const w = box(world, 0.9 + rand() * 0.9, 0.05, 0.14, -11 + rand() * 22, -0.33, 8.2 + rand() * 3.4, C.white, { cast: false });
-      w.userData.dynamic = true;
-      const base = w.position.x;
-      const off = rand() * 6;
-      animated.push((t) => {
-        w.position.x = base + Math.sin(t * 0.6 + off) * 0.5;
-        w.scale.x = 1.1 + Math.sin(t * 0.9 + off) * 0.5;
-      });
-    }
-    // 岩
-    box(world, 0.9, 0.5, 0.8, -9.6, -0.5, 8.3, C.grey);
-    box(world, 0.5, 0.35, 0.5, -8.9, -0.5, 8.6, C.stone);
+    person(g, 0.6, 0.8, 0.9, { shirt: C.teal });
+    person(g, 0.1, 1.2, 0.6, { s: 0.75 });
   }
 
-  // ---------- 道を走るバス・雲・風に舞う葉っぱ ----------
-  function buildMoving() {
-    const X = 9.8, Z0 = -9.8, Z1 = 3.5;
-    const corners = [[-X, Z1], [X, Z1], [X, Z0], [-X, Z0]];
-    const lens = corners.map((c, i) => {
-      const n = corners[(i + 1) % 4];
-      return Math.hypot(n[0] - c[0], n[1] - c[1]);
+  // ---------- 恋路海岸 ----------
+  function buildKoiji() {
+    const g = site('koiji', 0, 0, 0.45, 110, 0.36);
+    // 恋路のカレー屋さん
+    box(g, 2.0, 1.2, 1.5, -1.0, 0, -0.8, C.yellow);
+    box(g, 2.3, 0.25, 1.8, -1.0, 1.2, -0.8, C.brown);
+    box(g, 2.0, 0.12, 0.7, -1.0, 1.0, 0.25, C.red);
+    box(g, 0.6, 0.85, 0.1, -1.4, 0, -0.03, C.darkBrown);
+    sign(g, 'カレー', 1.2, 0.4, -1.0, 1.75, -0.02, { bg: '#c84a36', fg: '#fff1d2' });
+    // 幸せの鐘
+    const bell = group(g, 1.4, 0, 0.2);
+    box(bell, 0.16, 1.7, 0.16, -0.5, 0, 0, C.white);
+    box(bell, 0.16, 1.7, 0.16, 0.5, 0, 0, C.white);
+    box(bell, 1.3, 0.18, 0.2, 0, 1.7, 0, C.white);
+    const b = box(bell, 0.4, 0.42, 0.4, 0, 1.2, 0, C.yellow);
+    b.userData.dynamic = true;
+    animated.push((t) => {
+      b.rotation.z = Math.sin(t * 2.2) * 0.3;
     });
-    const total = lens.reduce((a, b) => a + b, 0);
+    person(g, 0.9, 1.0, 0.6, { shirt: C.pink });
+    person(g, 1.5, 1.1, -0.4, { shirt: C.blue });
+    // 海の鳥居
+    const [kx, , kz] = placePos('koiji');
+    const torii = group(world, kx + 0.85, SEA_Y, kz + 0.25, Math.PI / 2);
+    torii.scale.setScalar(0.3);
+    box(torii, 0.22, 2.2, 0.22, -0.8, 0, 0, C.red);
+    box(torii, 0.22, 2.2, 0.22, 0.8, 0, 0, C.red);
+    box(torii, 2.1, 0.18, 0.22, 0, 1.6, 0, C.red);
+    box(torii, 2.6, 0.22, 0.3, 0, 2.1, 0, C.red);
+    label('恋路海岸', placePos('koiji', 0, 0.85, 0));
+  }
 
+  // ---------- 国道249号を走る車・雲・風に舞う葉っぱ ----------
+  function buildMoving() {
+    const pts = [];
+    for (let i = 0; i < G.route.length; i += 2) pts.push([G.route[i], G.route[i + 1]]);
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    const total = cum[cum.length - 1];
     const bus = dynamic(group(world));
+    bus.scale.setScalar(0.24);
     box(bus, 1.9, 0.75, 0.9, 0, 0.18, 0, C.orange);
     box(bus, 1.9, 0.12, 0.9, 0, 0.93, 0, C.white);
     box(bus, 1.5, 0.3, 0.94, -0.05, 0.52, 0, C.navy);
-    box(bus, 0.1, 0.3, 0.7, 0.92, 0.52, 0, C.navy);
-    for (const [wx, wz] of [[-0.6, 0.42], [0.6, 0.42], [-0.6, -0.42], [0.6, -0.42]]) {
-      box(bus, 0.34, 0.34, 0.14, wx, 0, wz, C.black);
-    }
+    for (const [wx, wz] of [[-0.6, 0.42], [0.6, 0.42], [-0.6, -0.42], [0.6, -0.42]]) box(bus, 0.34, 0.34, 0.14, wx, 0, wz, C.black);
+    let seg = 1;
+    let busY = 0.1;
     animated.push((t) => {
-      let d = (t * 1.5) % total;
-      let i = 0;
-      while (d > lens[i]) {
-        d -= lens[i];
-        i++;
-      }
-      const a = corners[i];
-      const b = corners[(i + 1) % 4];
-      const k = d / lens[i];
-      bus.position.set(a[0] + (b[0] - a[0]) * k, 0.06, a[1] + (b[1] - a[1]) * k);
-      bus.rotation.y = -Math.atan2(b[1] - a[1], b[0] - a[0]);
+      // 行って、戻る
+      const u = (t * 0.55) % (total * 2);
+      const back = u > total;
+      const d = back ? total * 2 - u : u;
+      if (cum[seg - 1] > d) seg = 1;
+      while (seg < pts.length - 1 && cum[seg] < d) seg++;
+      const a = pts[seg - 1], b = pts[seg];
+      const k = (d - cum[seg - 1]) / Math.max(1e-6, cum[seg] - cum[seg - 1]);
+      const x = a[0] + (b[0] - a[0]) * k;
+      const z = a[1] + (b[1] - a[1]) * k;
+      busY += (groundY(x, z) - busY) * 0.15;
+      bus.position.set(x, busY + 0.04, z);
+      bus.rotation.y = -Math.atan2(b[1] - a[1], b[0] - a[0]) + (back ? Math.PI : 0);
     });
 
     // 雲
-    [[-7, 12.5, -6], [6, 13.5, -9], [1, 12, 6], [-11, 13, 3], [11, 12.4, 1]].forEach(([x, y, z], i) => {
+    [[-15, 6.5, -9], [12, 7.5, -11], [-4, 7, 10], [17, 6.8, 6]].forEach(([x, y, z], i) => {
       const c = dynamic(group(world, x, y, z));
+      c.scale.setScalar(0.55);
       box(c, 2.6, 0.6, 1.4, 0, 0, 0, C.white, { cast: false });
       box(c, 1.5, 0.6, 1.1, 0.3, 0.5, 0, C.white, { cast: false });
       box(c, 1.1, 0.5, 0.9, -1.2, 0.1, 0.2, C.white, { cast: false });
       animated.push((t) => {
-        c.position.x = ((x + t * (0.25 + i * 0.04) + 16) % 32) - 16;
+        c.position.x = x + Math.sin(t * 0.08 + i * 2) * 2.5;
       });
     });
 
     // そよかぜに舞う葉っぱ・花びら
     const COUNT = isSmall() ? 36 : 64;
-    const leafGeo = new THREE.BoxGeometry(0.2, 0.03, 0.13);
+    const leafGeo = new THREE.BoxGeometry(0.12, 0.02, 0.08);
     const leaves = new THREE.InstancedMesh(leafGeo, new THREE.MeshLambertMaterial({ color: 0xffffff }), COUNT);
     leaves.userData.dynamic = true;
     const colors = [C.pink, 0xf6c4cd, C.leaf, C.white, C.yellow];
@@ -676,14 +939,14 @@ function start() {
     const data = [];
     for (let i = 0; i < COUNT; i++) {
       leaves.setColorAt(i, col.set(colors[i % colors.length]));
-      data.push({ x: rand() * 34, y: 1.5 + rand() * 9, z: -13 + rand() * 26, sp: 1.2 + rand() * 1.6, ph: rand() * 10 });
+      data.push({ x: rand() * 44, y: 1.5 + rand() * 7, z: -13 + rand() * 24, sp: 1.2 + rand() * 1.6, ph: rand() * 10 });
     }
     world.add(leaves);
     const dummy = new THREE.Object3D();
     animated.push((t) => {
       for (let i = 0; i < COUNT; i++) {
         const p = data[i];
-        const x = ((p.x + t * p.sp) % 34) - 17;
+        const x = ((p.x + t * p.sp) % 44) - 22;
         dummy.position.set(x, p.y + Math.sin(t * 1.3 + p.ph) * 0.6, p.z + Math.sin(t * 0.7 + p.ph) * 0.8);
         dummy.rotation.set(t * 1.7 + p.ph, t * 1.1 + p.ph, t * 0.6);
         dummy.updateMatrix();
@@ -735,20 +998,42 @@ function start() {
     done.forEach((o) => o.parent.remove(o));
   }
 
-  buildIsland();
-  buildWindmill();
-  buildBase();
-  buildHome();
+  // 名所を置く（ここで地面をならす）→ 地形 → 木・家・道の順に作る
+  buildTownHall();
+  buildTemple();
   buildFestival();
-  buildMarket();
-  buildContact();
+  buildBrewery();
+  buildPort();
+  buildGelato();
+  buildSakura();
+  buildObservatory();
+  buildPasture();
+  buildMawaki();
+  buildSquid();
+  buildMatsunami();
+  buildKoiji();
+  label('宇出津', placePos('yakuba', 0.1, 2.3, 0.2), { major: true });
+  label('柳田', placePos('yanagida', 0, 0.3, 0), { major: true });
+  label('松波', placePos('matsunami', 0.3, 1.6, -0.3), { major: true });
+  label('鵜川', placePos('ukawa', 0, 0.3, 0), { major: true });
+  label('瑞穂', placePos('mizuho', 0.2, 1.7, 0.2), { major: true });
+  buildTerrain();
+  buildCover();
   buildMoving();
   bakeStatic();
+
+  // カメラが止まる場所を、実際の位置から計算する
+  STOPS.forEach((s) => {
+    const base = s.key ? placePos(s.key) : [0, 0, 0];
+    s.target = [base[0] + s.t[0], base[1] + s.t[1], base[2] + s.t[2]];
+    const sp = s.spotKey ? placePos(s.spotKey) : base;
+    s.spot = [sp[0] + s.s[0], sp[1] + s.s[1], sp[2] + s.s[2]];
+  });
 
   // 島の下の影
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), new THREE.ShadowMaterial({ opacity: 0.16, color: 0x17414a }));
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -2.2;
+  ground.position.y = BASE_Y - 0.02;
   ground.receiveShadow = true;
   scene.add(ground);
 
@@ -897,7 +1182,7 @@ function start() {
     const az = (lerp(a.az, b.az, k) - sway * 5 - (1 - introK) * 70) * DEG;
     const el = (lerp(a.el, b.el, k) + tilt * 2.5 + (1 - introK) * 14) * DEG;
     // 移動の途中は少し引いて、島全体が見えるようにする
-    let dist = lerp(a.dist, b.dist, k) + Math.sin(Math.PI * f) * 9 + (1 - introK) * 26;
+    let dist = lerp(a.dist, b.dist, k) + Math.sin(Math.PI * f) * 12 + (1 - introK) * 26;
     if (isSmall()) dist *= width / height < 0.62 ? 1.55 : 1.35;
     tgt.set(lerp(a.target[0], b.target[0], k), lerp(a.target[1], b.target[1], k), lerp(a.target[2], b.target[2], k));
 
@@ -909,6 +1194,16 @@ function start() {
     camera.lookAt(tgt);
 
     for (const fn of animated) fn(time);
+
+    // 札の大きさは画面上で一定に。細かい札は近づいたときだけ見せる
+    const labelH = (isSmall() ? 17 : 22) / height * 2 * Math.tan((camera.fov * DEG) / 2);
+    const near = dist / (isSmall() ? 1.45 : 1) < 48;
+    for (const sp of labels) {
+      sp.scale.set(labelH * sp.userData.aspect, labelH, 1);
+      const want = sp.userData.major ? (near ? 0 : 1) : near ? 1 : 0;
+      sp.material.opacity += (want - sp.material.opacity) * Math.min(1, dt * 6);
+      sp.visible = sp.material.opacity > 0.02;
+    }
     renderer.render(scene, camera);
 
     // 点線：カードの角 → 街の中の点
